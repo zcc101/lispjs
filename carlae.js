@@ -44,18 +44,16 @@ class CarlaeEnv {
 }
 
 class UserDefinedFunction {
-  constructor(params, body, env) {
+  constructor(params, body, parentEnv) {
     this.params = params;
     this.body = body;
-    this.env = new CarlaeEnv(env);
+    this.localEnv = new CarlaeEnv(parentEnv);
   }
 
-  call(args) {
+  passArgs(args) {
     for (let i = 0; i < this.params.length; i++) {
-      this.env.defineName(this.params[i], args[i]);
+      this.localEnv.defineName(this.params[i], args[i]);
     }
-
-    
   }
 }
 
@@ -217,22 +215,40 @@ function evaluate(tree, env = null) {
     return val;
   }
 
+  if (tree[0] === 'function') {
+    return new UserDefinedFunction(tree[1], tree[2], env);
+  }
+
   if (tree[0] === ':=') {
-    const name = tree[1];
-    const val = evaluate(tree[2]);
-    env.defineName(name, val, env);
-    return val;
+    if (typeof tree[1] === 'string') {
+      const val = evaluate(tree[2]);
+      env.defineName(tree[1], val);
+      return val;
+    }
+    const name = tree[1][0];
+    const params = tree[1].slice(1);
+    const fn = new UserDefinedFunction(params, tree[2], env);
+    env.defineName(name, fn);
+    return fn;
   }
-  const fnName = tree[0];
-  const f = evaluate(fnName, env);
-  if (typeof f !== 'function') {
-    throw CarlaeEvaluationError(`valid function: ${fnName}`);
-  }
+
+  const fn = evaluate(tree[0], env);
   const args = [];
+
   for (let i = 1; i < tree.length; i++) {
     args.push(evaluate(tree[i], env));
   }
-  return f(args);
+
+  if (typeof f === 'function') {
+    return fn(args);
+  }
+
+  if (fn instanceof UserDefinedFunction) {
+    fn.passArgs(args);
+    return evaluate(fn.body, fn.localEnv);
+  }
+
+  return fn(args);
 }
 
 /**
