@@ -247,8 +247,6 @@ function evaluate(tree, env = null) {
     fn.passArgs(args);
     return evaluate(fn.body, fn.localEnv);
   }
-
-  return fn(args);
 }
 
 /**
