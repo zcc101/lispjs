@@ -104,6 +104,61 @@ const carlaeBuiltins = new Map([
       });
     },
   ],
+  [
+    '=',
+    (args) => {
+      const conds = [];
+      args.reduce((prev, cur) => {
+        conds.push(prev === cur);
+        return cur;
+      });
+      return conds.every((item) => item);
+    },
+  ],
+  [
+    '>',
+    (args) => {
+      const conds = [];
+      args.reduce((prev, cur) => {
+        conds.push(prev > cur);
+        return cur;
+      });
+      return conds.every((item) => item);
+    },
+  ],
+  [
+    '>=',
+    (args) => {
+      const conds = [];
+      args.reduce((prev, cur) => {
+        conds.push(prev >= cur);
+        return cur;
+      });
+      return conds.every((item) => item);
+    },
+  ],
+  [
+    '<',
+    (args) => {
+      const conds = [];
+      args.reduce((prev, cur) => {
+        conds.push(prev < cur);
+        return cur;
+      });
+      return conds.every((item) => item);
+    },
+  ],
+  [
+    '<=',
+    (args) => {
+      const conds = [];
+      args.reduce((prev, cur) => {
+        conds.push(prev <= cur);
+        return cur;
+      });
+      return conds.every((item) => item);
+    },
+  ],
 ]);
 
 const carlaeBuiltinsEnv = CarlaeEnv.fromMap(carlaeBuiltins);

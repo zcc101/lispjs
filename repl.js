@@ -1,5 +1,5 @@
 const readline = require('readline');
-const { resultAndEnv } = require('./evaluator');
+const { resultAndEnv, stringify } = require('./evaluator');
 const { parse, tokenize } = require('./parser');
 const { log } = require('./utils');
 /**
@@ -27,7 +27,7 @@ function repl() {
     try {
       let res;
       [res, env] = resultAndEnv(tree, env);
-      log(res);
+      log(stringify(res));
       // log(env);
     } catch (err) {
       log(err);
