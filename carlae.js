@@ -1,7 +1,3 @@
-'use strict';
-
-const readline = require('readline');
-
 class CarlaeError extends Error {
   constructor(msg) {
     super(msg);
@@ -29,6 +25,8 @@ class CarlaeEvaluationError extends CarlaeError {
     this.name = 'CarlaeEvaluationError';
   }
 }
+
+// representation of evaluation environment
 
 class CarlaeEnv {
   constructor(parentEnv = null) {
@@ -63,17 +61,13 @@ class CarlaeEnv {
   }
 }
 
+// representation of user-defined function
+
 class UserDefinedFunction {
-  constructor(params, body, parentEnv) {
+  constructor(params, body, encloseEnv) {
     this.params = params;
     this.body = body;
-    this.localEnv = new CarlaeEnv(parentEnv);
-  }
-
-  passArgs(args) {
-    for (let i = 0; i < this.params.length; i++) {
-      this.localEnv.defineName(this.params[i], args[i]);
-    }
+    this.encloseEnv = encloseEnv; // the environment in which the function was defined
   }
 }
 
@@ -112,197 +106,14 @@ const carlaeBuiltins = new Map([
   ],
 ]);
 
-function log(...args) {
-  console.log.apply(console, args);
-}
+const carlaeBuiltinsEnv = CarlaeEnv.fromMap(carlaeBuiltins);
 
-function isBlank(s) {
-  return /\s+/.test(s);
-}
-
-function numberOrSymbol(s) {
-  if (/^-?\d+\.?\d*$/.test(s)) {
-    return Number(s);
-  } else {
-    return s;
-  }
-}
-
-/**
- *
- * @param {string} source
- * @returns {string[]}
- */
-function tokenize(source) {
-  const tokens = [];
-  let word = '',
-    // 当前的字符是否属于注释
-    inComments = false;
-
-  for (let i = 0; i < source.length; i++) {
-    if (inComments) {
-      if (source[i] === '\n') {
-        inComments = false;
-      }
-    } else {
-      if (source[i] === '#') {
-        inComments = true;
-        if (word.length) {
-          tokens.push(word);
-          word = '';
-        }
-      } else if (source[i] === '(' || source[i] === ')') {
-        if (word.length) {
-          tokens.push(word);
-          word = '';
-        }
-        tokens.push(source[i]);
-      } else if (isBlank(source[i])) {
-        if (word.length) {
-          tokens.push(word);
-          word = '';
-        }
-      } else {
-        word += source[i];
-      }
-    }
-  }
-
-  if (word.length) {
-    tokens.push(word);
-    word = '';
-  }
-
-  return tokens;
-}
-
-/**
- * parsing the list of tokens into an abstract syntax tree.
- * A number is represented according to its JavaScript type(Number).
- * A symbol is represented as string.
- * An S-expression is represented as a list of its parsed subexpressions.
- * @param {string[]} tokens
- * @returns {object[]}
- */
-function parse(tokens) {
-  if (tokens.length === 1 && tokens[0] !== '(') {
-    return numberOrSymbol(tokens[0]);
-  }
-
-  const parseHelper = (idx) => {
-    const token = tokens[idx];
-    if (tokens[idx] === '(') {
-      let [cur, nextIdx] = parseHelper(idx + 1);
-      if (nextIdx < tokens.length) {
-        let rest;
-        [rest, nextIdx] = parseHelper(nextIdx);
-        return [[cur].concat(rest), nextIdx];
-      } else {
-        return [cur, nextIdx];
-      }
-    } else if (tokens[idx] === ')') {
-      return [[], idx + 1];
-    } else {
-      let cur = numberOrSymbol(token);
-      let [rest, nextIdx] = parseHelper(idx + 1);
-      return [[cur].concat(rest), nextIdx];
-    }
-  };
-  const [tree, nextIdx] = parseHelper(0);
-  return tree;
-}
-
-/**
- *  tree-walking evaluator for carlae
- * @param {array} tree
- * @param {CarlaeEnv} env
- * @returns
- */
-function evaluate(tree, env = null) {
-  if (!env) {
-    env = new CarlaeEnv(CarlaeEnv.fromMap(carlaeBuiltins));
-  }
-
-  if (typeof tree === 'number') {
-    return tree;
-  }
-
-  if (typeof tree === 'string') {
-    const val = env.lookup(tree);
-    if (!val) {
-      throw new CarlaeNameError(`unknown identifier: ${tree}`);
-    }
-    return val;
-  }
-
-  if (tree[0] === 'function') {
-    return new UserDefinedFunction(tree[1], tree[2], env);
-  }
-
-  if (tree[0] === ':=') {
-    if (typeof tree[1] === 'string') {
-      const val = evaluate(tree[2]);
-      env.defineName(tree[1], val);
-      return val;
-    }
-    const name = tree[1][0];
-    const params = tree[1].slice(1);
-    const fn = new UserDefinedFunction(params, tree[2], env);
-    env.defineName(name, fn);
-    return fn;
-  }
-
-  const fn = evaluate(tree[0], env);
-  const args = [];
-
-  for (let i = 1; i < tree.length; i++) {
-    args.push(evaluate(tree[i], env));
-  }
-
-  if (typeof f === 'function') {
-    return fn(args);
-  }
-
-  if (fn instanceof UserDefinedFunction) {
-    fn.passArgs(args);
-    return evaluate(fn.body, fn.localEnv);
-  }
-}
-
-/**
- * Read-eval-print-loop
- * read line from stdin
- * evaluate code
- * print value
- */
-function repl() {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-    prompt: 'carlae> ',
-  });
-
-  const globalEnv = new CarlaeEnv(CarlaeEnv.fromMap(carlaeBuiltins));
-
-  rl.prompt();
-  rl.on('line', (line) => {
-    if (line === 'exit') {
-      process.exit(0);
-    }
-    const tokens = tokenize(line);
-    const tree = parse(tokens);
-
-    try {
-      const res = evaluate(tree, globalEnv);
-      log(res);
-    } catch (err) {
-      log(err);
-    } finally {
-      rl.prompt();
-    }
-  });
-}
-
-(() => {
-  repl();
-})();
+module.exports = {
+  CarlaeError,
+  CarlaeEvaluationError,
+  CarlaeNameError,
+  CarlaeSyntaxError,
+  CarlaeEnv,
+  UserDefinedFunction,
+  carlaeBuiltinsEnv,
+};
