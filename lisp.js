@@ -2,13 +2,33 @@
 
 const readline = require('readline');
 
-class CarlaeError extends Error {}
+class CarlaeError extends Error {
+  constructor(msg) {
+    super(msg);
+    this.name = 'CarlaeError';
+  }
+}
 
-class CarlaeSyntaxError extends CarlaeError {}
+class CarlaeSyntaxError extends CarlaeError {
+  constructor(msg) {
+    super(msg);
+    this.name = 'CarlaeSyntaxError';
+  }
+}
 
-class CarlaeNameError extends CarlaeError {}
+class CarlaeNameError extends CarlaeError {
+  constructor(msg) {
+    super(msg);
+    this.name = 'CarlaeNameError';
+  }
+}
 
-class CarlaeEvaluationError extends CarlaeError {}
+class CarlaeEvaluationError extends CarlaeError {
+  constructor(msg) {
+    super(msg);
+    this.name = 'CarlaeEvaluationError';
+  }
+}
 
 class CarlaeEnv {
   constructor(parentEnv = null) {
@@ -54,8 +74,6 @@ class UserDefinedFunction {
     for (let i = 0; i < this.params.length; i++) {
       this.env.defineName(this.params[i], args[i]);
     }
-
-    
   }
 }
 
